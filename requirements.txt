@@ -1,0 +1,9 @@
+torch
+gymnasium[mujoco]
+numpy
+pandas
+matplotlib
+tqdm
+scikit-learn
+wandb
+huggingface_hub
