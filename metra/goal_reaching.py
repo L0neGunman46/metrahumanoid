@@ -36,7 +36,21 @@ def evaluate_goal_reaching(agent, env, config, logger, training_step, num_goals=
         total_reward = 0
         skill = None # Skill will be updated periodically
         # 1. Sample Random Goal based on Environment
-        if "HalfCheetah" in env_id:
+        if "Humanoid" in env_id:
+            # Use a moderate region to keep goals feasible early
+            goal_x = float(np.random.uniform(-10, 10))
+            goal_y = float(np.random.uniform(-10, 10))
+            target_goal_position = np.array([goal_x, goal_y], dtype=np.float32)
+
+            # Build goal_state from current obs and overwrite x,y "slots" the encoder sees
+            state, _ = env.reset(seed=config["seed"] + goal_id + training_step)
+            goal_state = np.array(state, copy=True).astype(np.float32)
+            # If your encoder was trained purely on obs, we can only proxy this by setting obs[0:2]
+            # (It’s okay as a heuristic; true x,y come from qpos but φ takes obs.)
+            if goal_state.shape[0] >= 2:
+                goal_state[0], goal_state[1] = goal_x, goal_y
+                
+        elif "HalfCheetah" in env_id:
             goal_x = float(np.random.uniform(-100, 100))
             target_goal_position = np.array([goal_x], dtype=np.float32)
             goal_state = np.array(state, copy=True)  # start from current obs
@@ -76,7 +90,11 @@ def evaluate_goal_reaching(agent, env, config, logger, training_step, num_goals=
         
         # 3. Calculate Final Distance and Success
         final_pos = _xy_from_env(env)
-        if "HalfCheetah" in env_id:
+        if "Humanoid" in env_id:
+            current_agent_position = final_pos
+            distance = float(np.linalg.norm(current_agent_position - target_goal_position))
+            success = distance < 3.0
+        elif "HalfCheetah" in env_id:
             current_agent_position = final_pos  # shape (1,)
             distance = float(np.linalg.norm(current_agent_position - target_goal_position))
             success = distance < 3.0

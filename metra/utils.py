@@ -10,18 +10,20 @@ import matplotlib.pyplot as plt
 
 
 def _get_xy_from_env(env):
-    # Works for MuJoCo-based Gymnasium envs: use sim.data.qpos[:2] when present
     qpos = None
     if hasattr(env.unwrapped, "sim") and hasattr(env.unwrapped.sim, "data"):
         qpos = env.unwrapped.sim.data.qpos
     elif hasattr(env.unwrapped, "data") and hasattr(env.unwrapped.data, "qpos"):
         qpos = env.unwrapped.data.qpos
-    if qpos is not None and qpos.shape[0] >= 2:
-        return np.array([qpos[0], 0.0 if qpos.shape[0] < 2 else qpos[1]], dtype=np.float32)
-    # Fallback: try state[0:2]
+    if qpos is not None:
+        # Humanoid has x,y as first two entries of qpos
+        x = float(qpos[0])
+        y = float(qpos[1]) if qpos.shape[0] > 1 else 0.0
+        return np.array([x, y], dtype=np.float32)
+    # fallback to obs
     obs = env.unwrapped._get_obs() if hasattr(env.unwrapped, "_get_obs") else None
     if obs is not None and obs.shape[0] >= 2:
-        return np.array([obs[0], obs[1]], dtype=np.float32)
+        return np.array([float(obs[0]), float(obs[1])], dtype=np.float32)
     return np.zeros(2, dtype=np.float32)
 
 
@@ -53,6 +55,7 @@ def evaluate_and_visualize(agent, config, training_step):
         "training_step": training_step,
         "environment": config["env_id"],
         "skills": [],
+        "seed": seed,
     }
 
     final_x_positions = []
@@ -118,6 +121,10 @@ def evaluate_and_visualize(agent, config, training_step):
 
     data_filename = f"results/trajectories/skills_step_{training_step}.json"
     with open(data_filename, "w") as f:
+        json.dump(trajectories_data, f, indent=2)
+    
+    data_filename = f'results/trajectories/trajectories_{env_id}_seed{seed}_step{training_step}.json'
+    with open(data_filename, 'w') as f:
         json.dump(trajectories_data, f, indent=2)
 
     print(f"✓ Plots saved: {traj_filename}")
